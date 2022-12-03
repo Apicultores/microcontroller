@@ -1,7 +1,6 @@
 #include "files.h"
 
-// TODO quebrar em listDir e listAllDir
-void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
+void listDir(fs::FS &fs, const char *dirname) {
   Serial.printf("Listando diretorio %s...\n", dirname);
 
   File root = fs.open(dirname);
@@ -17,8 +16,32 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
   while (file) {
     if (file.isDirectory()) {
       Serial.println("Diretório: %s", file.name());
+    } else {
+      Serial.println("Arquivo: %s", file.name());
+      Serial.println("Tamanho: %s", file.size());
+    }
+    file = root.openNextFile();
+  }
+}
+
+void listAllDir(fs::FS &fs, const char *rootDirname, uint8_t levels) {
+  Serial.printf("Listando diretorio %s...\n", rootDirname);
+
+  File root = fs.open(rootDirname);
+  if (!root) {
+    Serial.println("Falha ao abrir diretório!");
+    if (!root.isDirectory()) {
+      Serial.println("O caminho especificado não é um diretório");
+    }
+    return;
+  }
+
+  File file = root.openNextFile();
+  while (file) {
+    if (file.isDirectory()) {
+      Serial.println("Diretório: %s", file.name());
       if (levels) {
-        listDir(fs, file.name(), levels - 1);
+        listAllDir(fs, file.name(), levels - 1);
       }
     } else {
       Serial.print("Arquivo: ");

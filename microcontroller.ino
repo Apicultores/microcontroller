@@ -22,10 +22,9 @@ RTC_DS3231 rtc;
 BluetoothSerial SerialBT;
 DateTime last_time;
 
-String timestamp_string;
+String timestamp;
 String file_name;
 
-// TODO confirmar com o Finger/internet se os nomes das variáveis fazem sentido
 const int SERIAL_DATA_FLOW = 115200;
 const String BLUETOOTH_NAME = "finger_teste";
 const uint8_t SD_CARD_PIN = 5;
@@ -68,31 +67,38 @@ void setup() {
 }
 
 void loop() {
+  // Tempo de intervalo entre uma medição e outra, em segundos
+  const int COLLECT_DATA_TIME_INTERVAL = 60;
   DateTime now = rtc.now();
   int time_last_check = (now - last_time).totalseconds();
-  if (time_last_check > 300) {
+  if (time_last_check > COLLECT_DATA_TIME_INTERVAL) {
     last_time = now;
-    timestamp_string = last_time.timestamp().c_str();
-    file_name = fmt::format("./{}.json", timestamp_string);
+    timestamp = last_time.timestamp(TIMESTAMP_DATE);
+    file_name = fmt::format("./{}.json", timestamp.c_str());
     float h = dht.readHumidity();
     float t = dht.readTemperature();
     float s = analogRead(SOUNDPIN);
-  
-    if (!isnan(t) && !isnan(h)){
+
+    if (!isnan(t) && !isnan(h)) {
       writeFile(SD, file_name, "{");
       appendFile(SD, file_name, fmt::format("humidity: %.5f,", h));
       appendFile(SD, file_name, fmt::format("temperature: %.1f,", t));
       appendFile(SD, file_name, fmt::format("sound: %f,", s));
-      appendFile(SD, file_name, fmt::format("date: %s,", timestamp_string));
+      appendFile(SD, file_name, fmt::format("date: %s,", timestamp));
       appendFile(SD, file_name, "}");
     }
   }
 
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
-    if (input == 'r') {
-      readFileBT(SD, "/hello.txt");
-      SerialBT.println("");
+    if (input == 'g') {
+      start_time = last_time;
+      Serial.println("Lendo arquivos...");
+      // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
+      for (int i = 0, i < 30, i++) {
+        readFileBT(SD, start_time.timestamp(TIMESTAMP_DATE).c_str());
+        start_time = start_time - TimeSpan(ONE_DAY_IN_SECONDS);
+      }
     }
   }
 }
