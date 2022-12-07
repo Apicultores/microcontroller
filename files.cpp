@@ -15,10 +15,10 @@ void listDir(fs::FS &fs, const char *dirname) {
   File file = root.openNextFile();
   while (file) {
     if (file.isDirectory()) {
-      Serial.println("Diretório: %s", file.name());
+      Serial.printf("Diretório: %s", file.name());
     } else {
-      Serial.println("Arquivo: %s", file.name());
-      Serial.println("Tamanho: %s", file.size());
+      Serial.printf("Arquivo: %s", file.name());
+      Serial.printf("Tamanho: %s", file.size());
     }
     file = root.openNextFile();
   }
@@ -29,9 +29,9 @@ void listAllDir(fs::FS &fs, const char *rootDirname, uint8_t levels) {
 
   File root = fs.open(rootDirname);
   if (!root) {
-    Serial.println("Falha ao abrir diretório!");
+    Serial.printf("Falha ao abrir diretório!");
     if (!root.isDirectory()) {
-      Serial.println("O caminho especificado não é um diretório");
+      Serial.printf("O caminho especificado não é um diretório");
     }
     return;
   }
@@ -39,7 +39,7 @@ void listAllDir(fs::FS &fs, const char *rootDirname, uint8_t levels) {
   File file = root.openNextFile();
   while (file) {
     if (file.isDirectory()) {
-      Serial.println("Diretório: %s", file.name());
+      Serial.printf("Diretório: %s", file.name());
       if (levels) {
         listAllDir(fs, file.name(), levels - 1);
       }

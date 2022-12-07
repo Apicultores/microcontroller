@@ -5,7 +5,6 @@
 #include "SPI.h"
 #include <HTTPUpdateServer.h>
 #include <Wire.h>
-#include <fmt/core.h>
 
 #include "files.h"
 
@@ -23,7 +22,7 @@ BluetoothSerial SerialBT;
 DateTime last_time;
 
 String timestamp;
-String file_name;
+char file_name[100];
 
 const int SERIAL_DATA_FLOW = 115200;
 const String BLUETOOTH_NAME = "finger_teste";
@@ -74,17 +73,30 @@ void loop() {
   if (time_last_check > COLLECT_DATA_TIME_INTERVAL) {
     last_time = now;
     timestamp = last_time.timestamp(TIMESTAMP_DATE);
-    file_name = fmt::format("./{}.json", timestamp.c_str());
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
-    float s = analogRead(SOUNDPIN);
+    sprintf(file_name, "./{}.json", timestamp.c_str())
+    float humidity = dht.readHumidity();
+    float temperature = dht.readTemperature();
+    float sound = analogRead(SOUNDPIN);
 
     if (!isnan(t) && !isnan(h)) {
+
+      char humidity_str[20];
+      sprintf(humidity_str, "humidity: %.5f,", humidity);
+
+      char temperature_str[20];
+      sprintf(temperature_str, "temperature: %.1f,", temperature);
+
+      char sound_str[20];
+      sprintf(sound_str, "sound: %.5f,", sound);
+
+      char date_str[30];
+      sprintf(date_str, "date: %s,", timestamp.c_str());
+
       writeFile(SD, file_name, "{");
-      appendFile(SD, file_name, fmt::format("humidity: %.5f,", h));
-      appendFile(SD, file_name, fmt::format("temperature: %.1f,", t));
-      appendFile(SD, file_name, fmt::format("sound: %f,", s));
-      appendFile(SD, file_name, fmt::format("date: %s,", timestamp));
+      appendFile(SD, file_name, humidity_str);
+      appendFile(SD, file_name, temperature_str);
+      appendFile(SD, file_name, sound_str);
+      appendFile(SD, file_name, date_str);
       appendFile(SD, file_name, "}");
     }
   }
