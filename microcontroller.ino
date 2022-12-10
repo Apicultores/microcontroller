@@ -15,6 +15,7 @@
 #define SOUNDPIN 34
 #define DHTPIN 33
 #define DHTTYPE DHT11
+#define ONE_DAY_IN_SECONDS 86400
 
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS3231 rtc;
@@ -27,6 +28,67 @@ char file_name[100];
 const int SERIAL_DATA_FLOW = 115200;
 const String BLUETOOTH_NAME = "finger_teste";
 const uint8_t SD_CARD_PIN = 5;
+
+class SoundCatch {
+  public:
+  
+  int max;
+  int min;
+  time_t last_time;
+  double sum;
+  int count;
+
+  const int time_interval = 100;
+
+  SoundCatch() {
+    this->max = 2048;
+    this->min = 2048;
+    this->sum = 0;
+    this->count = 0;
+    this->last_time = millis();
+  }
+
+  void iter() {
+    int val = analogRead(SOUNDPIN);
+    if (val > this->max) this->max = val;
+    if (val < this->min) this->min = val;
+    time_t current_time = millis();
+    if ((time_t)(current_time - this->last_time) >= time_interval) {
+      this->last_time = current_time;
+      this->count  = 1;
+      this->sum  = this->max - this->min;
+      this->max = 2048;
+      this->min = 2048;
+    }
+  }
+  double get_average() {
+    return sum/count;
+  }
+
+  void clear_count(){
+    this->sum = 0;
+    this->count = 0;
+  }
+};
+
+class TimeKeeper {
+  public:
+  time_t last_time;
+  TimeKeeper() {
+    last_time = millis();
+  }
+  bool minute_passed() {
+    time_t current_time = millis();
+    if ((time_t)(current_time - last_time) >= 1000) { // 1 s pra teste, trocar pra 60000
+      last_time = current_time;
+      return true;
+    }
+    return false;
+  }
+};
+
+SoundCatch* sound_obj = new SoundCatch();
+TimeKeeper* time_keeper = new TimeKeeper();
 
 void setup() {
   Serial.begin(SERIAL_DATA_FLOW);
@@ -44,9 +106,9 @@ void setup() {
   } else if (rtc.lostPower()) {
     Serial.println("Ajustando relógio com horário do PC...");
     rtc.adjust(DateTime(__DATE__, __TIME__));
-    Serial.println("Data ajustada para: %s", rtc.now().timestamp());
+    Serial.printf("Data ajustada para: %s\n", rtc.now().timestamp());
   } else {
-    Serial.println("Data atual: %s", rtc.now().timestamp());
+    Serial.printf("Data atual: %s\n", rtc.now().timestamp());
   }
 
   /* SD */
@@ -67,36 +129,55 @@ void setup() {
 
 void loop() {
   // Tempo de intervalo entre uma medição e outra, em segundos
-  const int COLLECT_DATA_TIME_INTERVAL = 60;
-  DateTime now = rtc.now();
-  int time_last_check = (now - last_time).totalseconds();
-  if (time_last_check > COLLECT_DATA_TIME_INTERVAL) {
-    last_time = now;
-    timestamp = last_time.timestamp(TIMESTAMP_DATE);
-    sprintf(file_name, "./{}.json", timestamp.c_str())
+  sound_obj->iter();
+  // const int COLLECT_DATA_TIME_INTERVAL = 60;
+  // DateTime now = rtc.now();
+  // int time_last_check = (now - last_time).totalseconds();
+  if (time_keeper->minute_passed()) {
+    // last_time = now;
+    DateTime now = rtc.now();
+    String date, timestamp;
+    date = now.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
+    timestamp = now.timestamp();
+    
+    sprintf(file_name, "./{}.json", date.c_str());
     float humidity = dht.readHumidity();
     float temperature = dht.readTemperature();
-    float sound = analogRead(SOUNDPIN);
+    float sound = sound_obj->get_average();
+    sound_obj->clear_count();
 
-    if (!isnan(t) && !isnan(h)) {
+    if (!isnan(temperature) && !isnan(humidity)) {
 
-      char humidity_str[20];
-      sprintf(humidity_str, "humidity: %.5f,", humidity);
+      char temperature_inside_str[30];
+      sprintf(temperature_inside_str, "\"temperatura_dentro\": %.1f,", temperature);
 
-      char temperature_str[20];
-      sprintf(temperature_str, "temperature: %.1f,", temperature);
+      char temperature_outside_str[30];
+      sprintf(temperature_outside_str, "\"temperatura_fora\": %.1f,", temperature);
+      
+      char humidity_inside_str[30];
+      sprintf(humidity_inside_str, "\"umidade_dentro\": %.5f,", humidity);
 
-      char sound_str[20];
-      sprintf(sound_str, "sound: %.5f,", sound);
+      char humidity_outside_str[30];
+      sprintf(humidity_outside_str, "\"umidade_fora\": %.5f,", humidity);
 
-      char date_str[30];
-      sprintf(date_str, "date: %s,", timestamp.c_str());
+      char sound_str[30];
+      sprintf(sound_str, "\"som\": %.5f,", sound);
 
-      writeFile(SD, file_name, "{");
-      appendFile(SD, file_name, humidity_str);
-      appendFile(SD, file_name, temperature_str);
+      char timestamp_str[50];
+      sprintf(timestamp_str, "\"timestamp\": \"%s\"", timestamp.c_str());
+      timestamp_str[24] = ' ';
+
+      if(checkFileExists(SD, file_name)){
+        appendFile(SD, file_name, ",{");
+      } else {
+        writeFile(SD, file_name, "{");
+      }
+      appendFile(SD, file_name, temperature_inside_str);
+      appendFile(SD, file_name, temperature_outside_str);
+      appendFile(SD, file_name, humidity_inside_str);
+      appendFile(SD, file_name, humidity_outside_str);
       appendFile(SD, file_name, sound_str);
-      appendFile(SD, file_name, date_str);
+      appendFile(SD, file_name, timestamp_str);
       appendFile(SD, file_name, "}");
     }
   }
@@ -104,11 +185,11 @@ void loop() {
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
     if (input == 'g') {
-      start_time = last_time;
+      DateTime start_time = rtc.now();
       Serial.println("Lendo arquivos...");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
-      for (int i = 0, i < 30, i++) {
-        readFileBT(SD, start_time.timestamp(TIMESTAMP_DATE).c_str());
+      for (int i = 0; i < 30; i++) {
+        readFileBT(SD, start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str(), SerialBT);
         start_time = start_time - TimeSpan(ONE_DAY_IN_SECONDS);
       }
     }

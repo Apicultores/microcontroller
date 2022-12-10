@@ -1,4 +1,5 @@
 #include "files.h"
+#include "BluetoothSerial.h"
 
 void listDir(fs::FS &fs, const char *dirname) {
   Serial.printf("Listando diretorio %s...\n", dirname);
@@ -89,7 +90,7 @@ void readFile(fs::FS &fs, const char *path) {
   file.close();
 }
 
-void readFileBT(fs::FS &fs, const char *path) {
+void readFileBT(fs::FS &fs, const char *path, BluetoothSerial SerialBT) {
   Serial.printf("Lendo arquivo: %s\n", path);
 
   File file = fs.open(path);
@@ -103,6 +104,10 @@ void readFileBT(fs::FS &fs, const char *path) {
     SerialBT.write(file.read());
   }
   file.close();
+}
+
+bool checkFileExists(fs::FS &fs, const char *path) {
+  return fs.exists(path);
 }
 
 void writeFile(fs::FS &fs, const char *path, const char *message) {
