@@ -1,5 +1,4 @@
 #include "files.h"
-#include "BluetoothSerial.h"
 
 void listDir(fs::FS &fs, const char *dirname) {
   Serial.printf("Listando diretorio %s...\n", dirname);
@@ -79,7 +78,7 @@ void readFile(fs::FS &fs, const char *path) {
 
   File file = fs.open(path);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! read");
     return;
   }
 
@@ -90,18 +89,18 @@ void readFile(fs::FS &fs, const char *path) {
   file.close();
 }
 
-void readFileBT(fs::FS &fs, const char *path, BluetoothSerial SerialBT) {
+void readFileBT(fs::FS &fs, const char *path, BleSerial* SerialBT) {
   Serial.printf("Lendo arquivo: %s\n", path);
 
   File file = fs.open(path);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! read bt");
     return;
   }
 
   Serial.print("Enviando conteúdo do arquivo via Bluetooth");
   while (file.available()) {
-    SerialBT.write(file.read());
+    SerialBT->write(file.read());
   }
   file.close();
 }
@@ -115,7 +114,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
 
   File file = fs.open(path, FILE_WRITE);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! write");
     return;
   }
   if (file.print(message)) {
@@ -131,7 +130,7 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
 
   File file = fs.open(path, FILE_APPEND);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! append");
     return;
   }
   if (file.print(message)) {

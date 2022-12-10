@@ -1,4 +1,4 @@
-#include "BluetoothSerial.h"
+#include <BleSerial.h>
 #include "DHT.h"
 #include "RTClib.h"
 #include "SD.h"
@@ -19,7 +19,7 @@
 
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS3231 rtc;
-BluetoothSerial SerialBT;
+BleSerial SerialBT;
 DateTime last_time;
 
 String timestamp;
@@ -92,7 +92,7 @@ TimeKeeper* time_keeper = new TimeKeeper();
 
 void setup() {
   Serial.begin(SERIAL_DATA_FLOW);
-  SerialBT.begin(BLUETOOTH_NAME);
+  SerialBT.begin(BLUETOOTH_NAME.c_str());
 
   /* DHT */
   dht.begin();
@@ -140,7 +140,7 @@ void loop() {
     date = now.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
     timestamp = now.timestamp();
     
-    sprintf(file_name, "./{}.json", date.c_str());
+    sprintf(file_name, "./%s.json", date.c_str());
     float humidity = dht.readHumidity();
     float temperature = dht.readTemperature();
     float sound = sound_obj->get_average();
@@ -187,11 +187,17 @@ void loop() {
     if (input == 'g') {
       DateTime start_time = rtc.now();
       Serial.println("Lendo arquivos...");
+      SerialBT.print("{\"data\": [");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
       for (int i = 0; i < 30; i++) {
-        readFileBT(SD, start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str(), SerialBT);
+        readFileBT(SD, start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str(), &SerialBT);
+        readFile(SD, start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str(), &SerialBT);
         start_time = start_time - TimeSpan(ONE_DAY_IN_SECONDS);
+        if (i < 29) {
+         SerialBT.print(",");
+        }
       }
+      SerialBT.print("]}");
     }
   }
 }
