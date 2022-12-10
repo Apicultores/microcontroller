@@ -1,7 +1,6 @@
 #include "files.h"
 
-// TODO quebrar em listDir e listAllDir
-void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
+void listDir(fs::FS &fs, const char *dirname) {
   Serial.printf("Listando diretorio %s...\n", dirname);
 
   File root = fs.open(dirname);
@@ -16,9 +15,33 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
   File file = root.openNextFile();
   while (file) {
     if (file.isDirectory()) {
-      Serial.println("Diretório: %s", file.name());
+      Serial.printf("Diretório: %s", file.name());
+    } else {
+      Serial.printf("Arquivo: %s", file.name());
+      Serial.printf("Tamanho: %s", file.size());
+    }
+    file = root.openNextFile();
+  }
+}
+
+void listAllDir(fs::FS &fs, const char *rootDirname, uint8_t levels) {
+  Serial.printf("Listando diretorio %s...\n", rootDirname);
+
+  File root = fs.open(rootDirname);
+  if (!root) {
+    Serial.printf("Falha ao abrir diretório!");
+    if (!root.isDirectory()) {
+      Serial.printf("O caminho especificado não é um diretório");
+    }
+    return;
+  }
+
+  File file = root.openNextFile();
+  while (file) {
+    if (file.isDirectory()) {
+      Serial.printf("Diretório: %s", file.name());
       if (levels) {
-        listDir(fs, file.name(), levels - 1);
+        listAllDir(fs, file.name(), levels - 1);
       }
     } else {
       Serial.print("Arquivo: ");
@@ -55,7 +78,7 @@ void readFile(fs::FS &fs, const char *path) {
 
   File file = fs.open(path);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! read");
     return;
   }
 
@@ -66,20 +89,24 @@ void readFile(fs::FS &fs, const char *path) {
   file.close();
 }
 
-void readFileBT(fs::FS &fs, const char *path) {
+void readFileBT(fs::FS &fs, const char *path, BleSerial* SerialBT) {
   Serial.printf("Lendo arquivo: %s\n", path);
 
   File file = fs.open(path);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! read bt");
     return;
   }
 
   Serial.print("Enviando conteúdo do arquivo via Bluetooth");
   while (file.available()) {
-    SerialBT.write(file.read());
+    SerialBT->write(file.read());
   }
   file.close();
+}
+
+bool checkFileExists(fs::FS &fs, const char *path) {
+  return fs.exists(path);
 }
 
 void writeFile(fs::FS &fs, const char *path, const char *message) {
@@ -87,7 +114,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
 
   File file = fs.open(path, FILE_WRITE);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! write");
     return;
   }
   if (file.print(message)) {
@@ -103,7 +130,7 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
 
   File file = fs.open(path, FILE_APPEND);
   if (!file) {
-    Serial.println("Falha ao abrir arquivo!");
+    Serial.println("Falha ao abrir arquivo! append");
     return;
   }
   if (file.print(message)) {
