@@ -87,6 +87,14 @@ class TimeKeeper {
   }
 };
 
+DateTime now() {
+  DateTime current = rtc.now();
+  while (current.year() < 2022 || current.year() > 2100) {
+    current = rtc.now();
+  }
+  return current;
+}
+
 SoundCatch* sound_obj = new SoundCatch();
 TimeKeeper* time_keeper = new TimeKeeper();
 
@@ -106,9 +114,9 @@ void setup() {
   } else if (rtc.lostPower()) {
     Serial.println("Ajustando relógio com horário do PC...");
     rtc.adjust(DateTime(__DATE__, __TIME__));
-    Serial.printf("Data ajustada para: %s\n", rtc.now().timestamp());
+    Serial.printf("Data ajustada para: %s\n", now().timestamp());
   } else {
-    Serial.printf("Data atual: %s\n", rtc.now().timestamp());
+    Serial.printf("Data atual: %s\n", now().timestamp());
   }
 
   /* SD */
@@ -124,7 +132,11 @@ void setup() {
 
   Serial.printf("Capacidade do cartão SD: %lluMB\n",
                 SD.cardSize() / (1024 * 1024));
-  last_time = rtc.now();
+
+  writeFile(SD, "/hello_micro.txt", "Hello");
+  readFile(SD, "/hello_micro.txt");
+
+  last_time = now();
 }
 
 void loop() {
@@ -135,12 +147,12 @@ void loop() {
   // int time_last_check = (now - last_time).totalseconds();
   if (time_keeper->minute_passed()) {
     // last_time = now;
-    DateTime now = rtc.now();
+    DateTime now_time = now();
     String date, timestamp;
-    date = now.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
-    timestamp = now.timestamp();
+    date = now_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
+    timestamp = now_time.timestamp();
     
-    sprintf(file_name, "./%s.json", date.c_str());
+    sprintf(file_name, "/%s.json", date.c_str());
     float humidity = dht.readHumidity();
     float temperature = dht.readTemperature();
     float sound = sound_obj->get_average();
@@ -155,13 +167,13 @@ void loop() {
       sprintf(temperature_outside_str, "\"temperatura_fora\": %.1f,", temperature);
       
       char humidity_inside_str[30];
-      sprintf(humidity_inside_str, "\"umidade_dentro\": %.5f,", humidity);
+      sprintf(humidity_inside_str, "\"umidade_dentro\": %.1f,", humidity);
 
       char humidity_outside_str[30];
-      sprintf(humidity_outside_str, "\"umidade_fora\": %.5f,", humidity);
+      sprintf(humidity_outside_str, "\"umidade_fora\": %.1f,", humidity);
 
       char sound_str[30];
-      sprintf(sound_str, "\"som\": %.5f,", sound);
+      sprintf(sound_str, "\"som\": %.1f,", sound);
 
       char timestamp_str[50];
       sprintf(timestamp_str, "\"timestamp\": \"%s\"", timestamp.c_str());
@@ -185,17 +197,24 @@ void loop() {
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
     if (input == 'g') {
-      DateTime start_time = rtc.now();
+      DateTime start_time = now();
       Serial.println("Lendo arquivos...");
       SerialBT.print("{\"data\": [");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
+      bool first_print = true;
       for (int i = 0; i < 30; i++) {
-        readFileBT(SD, start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str(), &SerialBT);
-        readFile(SD, start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str(), &SerialBT);
-        start_time = start_time - TimeSpan(ONE_DAY_IN_SECONDS);
-        if (i < 29) {
-         SerialBT.print(",");
+        sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
+        if (!checkFileExists(SD, file_name)) {
+         continue;
         }
+        if (!first_print) {
+         SerialBT.print(", ");
+        }
+        first_print = false;
+        readFileBT(SD, file_name, &SerialBT);
+        readFile(SD, file_name);
+        start_time = start_time - TimeSpan(ONE_DAY_IN_SECONDS);
+      
       }
       SerialBT.print("]}");
     }
