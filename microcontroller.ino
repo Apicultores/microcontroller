@@ -79,7 +79,7 @@ class TimeKeeper {
   }
   bool minute_passed() {
     time_t current_time = millis();
-    if ((time_t)(current_time - last_time) >= 1000) { // 1 s pra teste, trocar pra 60000
+    if ((time_t)(current_time - last_time) >= 60000) { // 1 s pra teste, trocar pra 60000
       last_time = current_time;
       return true;
     }
