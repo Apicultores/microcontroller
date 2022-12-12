@@ -1,5 +1,7 @@
 #include "files.h"
 
+
+
 void listDir(fs::FS &fs, const char *dirname) {
   Serial.printf("Listando diretorio %s...\n", dirname);
 
@@ -73,6 +75,17 @@ void removeDir(fs::FS &fs, const char *path) {
   }
 }
 
+void fileToFile(fs::FS &fs, const char *source, const char* dest) {
+  File sourceFile = fs.open(source);
+  File destFile = fs.open(dest, FILE_APPEND);
+  while(sourceFile.available()) {
+    char readChar = sourceFile.read();
+    destFile.write(readChar);
+  }
+  sourceFile.close();
+  destFile.close();
+}
+
 void readFile(fs::FS &fs, const char *path) {
   Serial.printf("Lendo arquivo: %s\n", path);
 
@@ -100,7 +113,11 @@ void readFileBT(fs::FS &fs, const char *path, BleSerial* SerialBT) {
 
   Serial.print("Enviando conteúdo do arquivo via Bluetooth");
   while (file.available()) {
-    SerialBT->write(file.read());
+    char readChar = file.read();
+    SerialBT->write(readChar);
+    if (readChar == '\n') {
+      Serial.println("Wait");
+    }
   }
   file.close();
 }

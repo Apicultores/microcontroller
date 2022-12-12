@@ -16,6 +16,7 @@
 #define DHTPIN 33
 #define DHTTYPE DHT11
 #define ONE_DAY_IN_SECONDS 86400
+#define THIRTY_DAYS_IN_SECONDS 30*ONE_DAY_IN_SECONDS
 
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS3231 rtc;
@@ -85,6 +86,36 @@ class TimeKeeper {
     }
     return false;
   }
+};
+
+class BluetoothWriterDelegate {
+  public:
+  File currentFile;
+  bool hasfile;
+
+  BluetoothWriterDelegate() {
+    hasfile = false;
+  }
+  int setFile(String filename) {
+    if (writing()) { return -1; }
+    if (!checkFileExists(SD, filename.c_str())) { return -1; }
+    currentFile = SD.open(filename.c_str());
+  }
+  bool writing() {
+    if (hasfile && currentFile.available()) return true;
+    if (hasfile) currentFile.close();
+    hasfile = false;
+    return false;
+  }
+  void iter() {
+    if (writing()) {
+      while ( currentFile.available() && SerialBT.availableBufferSpace() > 0) {
+        char readChar = currentFile.read();
+        SerialBT.write(readChar);
+      }
+    }
+  }
+
 };
 
 DateTime now() {
@@ -165,14 +196,12 @@ void loop() {
       timestamp_str[10] = ' ';
 
       char to_write[100];
-      sprintf(to_write,"\n\n{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":%s}",
+      sprintf(to_write,"{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":\"%s\"}\n",
           temperature, temperature, humidity, humidity, sound, timestamp_str);
 
       if(checkFileExists(SD, file_name)){
-        to_write[0] = ',';
         appendFile(SD, file_name, to_write);
       } else {
-        to_write[0] = ' ';
         writeFile(SD, file_name, to_write);
       }
     }
@@ -181,26 +210,17 @@ void loop() {
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
     if (input == 'g') {
-      DateTime start_time = now();
+      DateTime start_time = now() - TimeSpan(THIRTY_DAYS_IN_SECONDS) + TimeSpan(ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
-      SerialBT.print("{\"data\": [");
+      // SerialBT.print("{\"data\": [");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
-      bool first_print = true;
       for (int i = 0; i < 30; i++) {
         sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
-        if (!checkFileExists(SD, file_name)) {
-         continue;
-        }
-        if (!first_print) {
-         SerialBT.print(", ");
-        }
-        first_print = false;
         readFileBT(SD, file_name, &SerialBT);
         readFile(SD, file_name);
-        start_time = start_time - TimeSpan(ONE_DAY_IN_SECONDS);
-      
+        start_time = start_time + TimeSpan(ONE_DAY_IN_SECONDS);
       }
-      SerialBT.print("]}");
+      SerialBT.print("!@##@!\n");
     }
   }
 }
