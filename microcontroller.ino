@@ -160,37 +160,21 @@ void loop() {
 
     if (!isnan(temperature) && !isnan(humidity)) {
 
-      char temperature_inside_str[30];
-      sprintf(temperature_inside_str, "\"temperatura_dentro\": %.1f,", temperature);
-
-      char temperature_outside_str[30];
-      sprintf(temperature_outside_str, "\"temperatura_fora\": %.1f,", temperature);
-      
-      char humidity_inside_str[30];
-      sprintf(humidity_inside_str, "\"umidade_dentro\": %.1f,", humidity);
-
-      char humidity_outside_str[30];
-      sprintf(humidity_outside_str, "\"umidade_fora\": %.1f,", humidity);
-
-      char sound_str[30];
-      sprintf(sound_str, "\"som\": %.1f,", sound);
-
       char timestamp_str[50];
-      sprintf(timestamp_str, "\"timestamp\": \"%s\"", timestamp.c_str());
-      timestamp_str[24] = ' ';
+      sprintf(timestamp_str, "%s", timestamp.c_str());
+      timestamp_str[10] = ' ';
+
+      char to_write[100];
+      sprintf(to_write,"\n\n{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":%s}",
+          temperature, temperature, humidity, humidity, sound, timestamp_str);
 
       if(checkFileExists(SD, file_name)){
-        appendFile(SD, file_name, ",{");
+        to_write[0] = ',';
+        appendFile(SD, file_name, to_write);
       } else {
-        writeFile(SD, file_name, "{");
+        to_write[0] = ' ';
+        writeFile(SD, file_name, to_write);
       }
-      appendFile(SD, file_name, temperature_inside_str);
-      appendFile(SD, file_name, temperature_outside_str);
-      appendFile(SD, file_name, humidity_inside_str);
-      appendFile(SD, file_name, humidity_outside_str);
-      appendFile(SD, file_name, sound_str);
-      appendFile(SD, file_name, timestamp_str);
-      appendFile(SD, file_name, "}");
     }
   }
 
