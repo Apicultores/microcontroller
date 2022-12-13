@@ -88,36 +88,6 @@ class TimeKeeper {
   }
 };
 
-class BluetoothWriterDelegate {
-  public:
-  File currentFile;
-  bool hasfile;
-
-  BluetoothWriterDelegate() {
-    hasfile = false;
-  }
-  int setFile(String filename) {
-    if (writing()) { return -1; }
-    if (!checkFileExists(SD, filename.c_str())) { return -1; }
-    currentFile = SD.open(filename.c_str());
-  }
-  bool writing() {
-    if (hasfile && currentFile.available()) return true;
-    if (hasfile) currentFile.close();
-    hasfile = false;
-    return false;
-  }
-  void iter() {
-    if (writing()) {
-      while ( currentFile.available() && SerialBT.availableBufferSpace() > 0) {
-        char readChar = currentFile.read();
-        SerialBT.write(readChar);
-      }
-    }
-  }
-
-};
-
 DateTime now() {
   DateTime current = rtc.now();
   while (current.year() < 2022 || current.year() > 2100) {
