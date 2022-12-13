@@ -16,7 +16,8 @@
 #define DHTPIN 33
 #define DHTTYPE DHT11
 #define ONE_DAY_IN_SECONDS 86400
-#define THIRTY_DAYS_IN_SECONDS 30*ONE_DAY_IN_SECONDS
+#define DAYS_RETURNED 7
+#define MEASURE_INTERVAL 5*60000
 
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS3231 rtc;
@@ -78,9 +79,9 @@ class TimeKeeper {
   TimeKeeper() {
     last_time = millis();
   }
-  bool minute_passed() {
+  bool time_passed() {
     time_t current_time = millis();
-    if ((time_t)(current_time - last_time) >= 60000) { // 1 s pra teste, trocar pra 60000
+    if ((time_t)(current_time - last_time) >= MEASURE_INTERVAL) {
       last_time = current_time;
       return true;
     }
@@ -146,7 +147,7 @@ void loop() {
   // const int COLLECT_DATA_TIME_INTERVAL = 60;
   // DateTime now = rtc.now();
   // int time_last_check = (now - last_time).totalseconds();
-  if (time_keeper->minute_passed()) {
+  if (time_keeper->time_passed()) {
     // last_time = now;
     DateTime now_time = now();
     String date, timestamp;
@@ -180,11 +181,11 @@ void loop() {
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
     if (input == 'g') {
-      DateTime start_time = now() - TimeSpan(THIRTY_DAYS_IN_SECONDS) + TimeSpan(ONE_DAY_IN_SECONDS);
+      DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
       // SerialBT.print("{\"data\": [");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < DAYS_RETURNED; i++) {
         sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
         readFileBT(SD, file_name, &SerialBT);
         readFile(SD, file_name);
