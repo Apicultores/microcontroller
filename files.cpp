@@ -115,9 +115,6 @@ void readFileBT(fs::FS &fs, const char *path, BleSerial* SerialBT) {
   while (file.available()) {
     char readChar = file.read();
     SerialBT->write(readChar);
-    if (readChar == '\n') {
-      Serial.println("Wait");
-    }
   }
   file.close();
 }

@@ -55,7 +55,7 @@ class SoundCatch {
     if (val > this->max) this->max = val;
     if (val < this->min) this->min = val;
     time_t current_time = millis();
-    if ((time_t)(current_time - this->last_time) >= time_interval) {
+    if ((time_t)(current_time - this->last_time) >= 1000) {//time_interval) {
       this->last_time = current_time;
       this->count  = 1;
       this->sum  = this->max - this->min;
@@ -183,14 +183,20 @@ void loop() {
     if (input == 'g') {
       DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
-      // SerialBT.print("{\"data\": [");
+      SerialBT.print("{\"data\": [");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
+      bool has_written = false;
       for (int i = 0; i < DAYS_RETURNED; i++) {
         sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
-        readFileBT(SD, file_name, &SerialBT);
-        readFile(SD, file_name);
         start_time = start_time + TimeSpan(ONE_DAY_IN_SECONDS);
+        if (!checkFileExists(SD, file_name)) continue;
+        if (!has_written) {
+          SerialBT.print(",\n");
+        }
+        readFileBT(SD, file_name, &SerialBT);        
+        has_written = true;
       }
+      SerialBT.print("\n]}\n");
       SerialBT.print("!@##@!\n");
     }
   }
