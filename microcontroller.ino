@@ -1,11 +1,10 @@
-#include <BleSerial.h>
 #include "DHT.h"
 #include "RTClib.h"
 #include "SD.h"
 #include "SPI.h"
+#include <BleSerial.h>
 #include <HTTPUpdateServer.h>
 #include <Wire.h>
-
 #include "files.h"
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -20,28 +19,26 @@
 #define DAYS_RETURNED 7
 #define MEASURE_INTERVAL 5*60000
 
+/* Instancia modulos */
 DHT dht(DHTPIN, DHTTYPE);
 DHT dht2(DHT2PIN, DHTTYPE);
 RTC_DS3231 rtc;
 BleSerial SerialBT;
 DateTime last_time;
-
 String timestamp;
 char file_name[100];
-
 const int SERIAL_DATA_FLOW = 115200;
-const String BLUETOOTH_NAME = "finger_teste";
+const String BLUETOOTH_NAME = "colmeia_01";
 const uint8_t SD_CARD_PIN = 5;
 
 class SoundCatch {
   public:
-  
+
   int max;
   int min;
   time_t last_time;
   double sum;
   int count;
-
   const int time_interval = 100;
 
   SoundCatch() {
@@ -77,10 +74,12 @@ class SoundCatch {
 
 class TimeKeeper {
   public:
+
   time_t last_time;
   TimeKeeper() {
     last_time = millis();
   }
+
   bool time_passed() {
     time_t current_time = millis();
     if ((time_t)(current_time - last_time) >= MEASURE_INTERVAL) {
@@ -135,9 +134,7 @@ void setup() {
     return;
   }
 
-  Serial.printf("Capacidade do cartão SD: %lluMB\n",
-                SD.cardSize() / (1024 * 1024));
-
+  Serial.printf("Capacidade do cartão SD: %lluMB\n", SD.cardSize()/(1024*1024));
   writeFile(SD, "/hello_micro.txt", "Hello");
   readFile(SD, "/hello_micro.txt");
 
@@ -156,11 +153,7 @@ float convertToDB(double val) {
 void loop() {
   // Tempo de intervalo entre uma medição e outra, em segundos
   sound_obj->iter();
-  // const int COLLECT_DATA_TIME_INTERVAL = 60;
-  // DateTime now = rtc.now();
-  // int time_last_check = (now - last_time).totalseconds();
   if (time_keeper->time_passed()) {
-    // last_time = now;
     DateTime now_time = now();
     String date, timestamp;
     date = now_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
@@ -192,6 +185,7 @@ void loop() {
 
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
+
     if (input == 'd') {
       DateTime now_time = now();
       String date, timestamp;
@@ -213,12 +207,11 @@ void loop() {
           internal_temperature, external_temperature, internal_humidity, external_humidity, sound, timestamp_str);
 
       Serial.println(to_write);
-    }
-    if (input == 'g') {
+    } else if (input == 'g') {
       DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
       SerialBT.print("{\"data\": [");
-      // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
+      // Le os ultimos arquivos, onde cada arquivo contém os dados de um dia
       bool has_written = false;
       for (int i = 0; i < DAYS_RETURNED; i++) {
         sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());

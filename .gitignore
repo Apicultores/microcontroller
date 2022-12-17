@@ -33,3 +33,6 @@
 
 # Arduino IDE
 *.theia
+
+#VS Code Files
+*.vscode

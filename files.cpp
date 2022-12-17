@@ -1,7 +1,5 @@
 #include "files.h"
 
-
-
 void listDir(fs::FS &fs, const char *dirname) {
   Serial.printf("Listando diretorio %s...\n", dirname);
 
@@ -167,15 +165,14 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
   file.close();
 }
 
-// TODO implementar caso precisemos utilizar
-// void renameFile(fs::FS &fs, const char *path1, const char *path2) {
-//   Serial.printf("Renomeando aqruivo  file %s to %s\n", path1, path2);
-//   if (fs.rename(path1, path2)) {
-//     Serial.println("File renamed");
-//   } else {
-//     Serial.println("Rename failed");
-//   }
-// }
+void renameFile(fs::FS &fs, const char *path1, const char *path2) {
+  Serial.printf("Renomeando aqruivo  file %s to %s\n", path1, path2);
+  if (fs.rename(path1, path2)) {
+    Serial.println("Arquivo renomeado!");
+  } else {
+    Serial.println("Falha ao renomear arquivo!");
+  }
+}
 
 void deleteFile(fs::FS &fs, const char *path) {
   Serial.printf("Deletando arquivo: %s\n", path);
