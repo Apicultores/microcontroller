@@ -231,7 +231,7 @@ void loop() {
         has_written = true;
       }
       SerialBT.print("\n]}\n");
-      SerialBT.print("!@##@!\n");
+      SerialBT.print("@\n");
     }
   }
 }
