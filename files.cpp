@@ -112,9 +112,21 @@ void readFileBT(fs::FS &fs, const char *path, BleSerial* SerialBT) {
   }
 
   Serial.print("Enviando conteúdo do arquivo via Bluetooth");
+  char buffer[101];
+  int counter = 0;
   while (file.available()) {
     char readChar = file.read();
-    SerialBT->write(readChar);
+    buffer[counter] = readChar;
+    counter++;
+    if (readChar == '\n' || counter >= 100) {
+      buffer[counter] = '\0';
+      SerialBT->print(buffer);
+      counter = 0;
+    }
+  }
+  if (counter > 0) {
+    buffer[counter] = '\0';
+    SerialBT->print(buffer);
   }
   file.close();
 }
