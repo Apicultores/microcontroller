@@ -14,12 +14,14 @@
 
 #define SOUNDPIN 34
 #define DHTPIN 33
+#define DHT2PIN 27
 #define DHTTYPE DHT11
 #define ONE_DAY_IN_SECONDS 86400
 #define DAYS_RETURNED 7
 #define MEASURE_INTERVAL 5*60000
 
 DHT dht(DHTPIN, DHTTYPE);
+DHT dht2(DHT2PIN, DHTTYPE);
 RTC_DS3231 rtc;
 BleSerial SerialBT;
 DateTime last_time;
@@ -55,7 +57,7 @@ class SoundCatch {
     if (val > this->max) this->max = val;
     if (val < this->min) this->min = val;
     time_t current_time = millis();
-    if ((time_t)(current_time - this->last_time) >= 1000) {//time_interval) {
+    if ((time_t)(current_time - this->last_time) >= time_interval) {
       this->last_time = current_time;
       this->count  = 1;
       this->sum  = this->max - this->min;
@@ -106,6 +108,7 @@ void setup() {
 
   /* DHT */
   dht.begin();
+  dht2.begin();
   pinMode(SOUNDPIN, INPUT);
   pinMode(32, OUTPUT);
   digitalWrite(32, 1);
@@ -141,6 +144,15 @@ void setup() {
   last_time = now();
 }
 
+float giveDefaultValueWhenNaN(float val, float default_val = -100) {
+  if (isnan(val)) return default_val;
+  return val;
+}
+
+float convertToDB(double val) {
+  return map((long)val, 0, 4096, 20, 80);
+}
+
 void loop() {
   // Tempo de intervalo entre uma medição e outra, em segundos
   sound_obj->iter();
@@ -155,31 +167,53 @@ void loop() {
     timestamp = now_time.timestamp();
     
     sprintf(file_name, "/%s.json", date.c_str());
-    float humidity = dht.readHumidity();
-    float temperature = dht.readTemperature();
-    float sound = sound_obj->get_average();
+    float external_humidity = giveDefaultValueWhenNaN(dht.readHumidity());
+    float external_temperature = giveDefaultValueWhenNaN(dht.readTemperature());
+    float internal_humidity = giveDefaultValueWhenNaN(dht2.readHumidity());
+    float internal_temperature = giveDefaultValueWhenNaN(dht2.readTemperature());
+    float sound = convertToDB(sound_obj->get_average());
     sound_obj->clear_count();
 
-    if (!isnan(temperature) && !isnan(humidity)) {
+    char timestamp_str[50];
+    sprintf(timestamp_str, "%s", timestamp.c_str());
+    timestamp_str[10] = ' ';
+
+    char to_write[100];
+    sprintf(to_write,"{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":\"%s\"}",
+        internal_temperature, external_temperature, internal_humidity, external_humidity, sound, timestamp_str);
+
+    if(checkFileExists(SD, file_name)){
+      appendFile(SD, file_name, ",\n");
+      appendFile(SD, file_name, to_write);
+    } else {
+      writeFile(SD, file_name, to_write);
+    }
+  }
+
+  if (SerialBT.available()) {
+    char input = (char)SerialBT.read();
+    if (input == 'd') {
+      DateTime now_time = now();
+      String date, timestamp;
+      date = now_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
+      timestamp = now_time.timestamp();
+
+      float external_humidity = giveDefaultValueWhenNaN(dht.readHumidity());
+      float external_temperature = giveDefaultValueWhenNaN(dht.readTemperature());
+      float internal_humidity = giveDefaultValueWhenNaN(dht2.readHumidity());
+      float internal_temperature = giveDefaultValueWhenNaN(dht2.readTemperature());
+      float sound = convertToDB(sound_obj->get_average());
 
       char timestamp_str[50];
       sprintf(timestamp_str, "%s", timestamp.c_str());
       timestamp_str[10] = ' ';
 
       char to_write[100];
-      sprintf(to_write,"{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":\"%s\"}\n",
-          temperature, temperature, humidity, humidity, sound, timestamp_str);
+      sprintf(to_write,"{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":\"%s\"}",
+          internal_temperature, external_temperature, internal_humidity, external_humidity, sound, timestamp_str);
 
-      if(checkFileExists(SD, file_name)){
-        appendFile(SD, file_name, to_write);
-      } else {
-        writeFile(SD, file_name, to_write);
-      }
+      Serial.println(to_write);
     }
-  }
-
-  if (SerialBT.available()) {
-    char input = (char)SerialBT.read();
     if (input == 'g') {
       DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
@@ -190,7 +224,7 @@ void loop() {
         sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
         start_time = start_time + TimeSpan(ONE_DAY_IN_SECONDS);
         if (!checkFileExists(SD, file_name)) continue;
-        if (!has_written) {
+        if (has_written) {
           SerialBT.print(",\n");
         }
         readFileBT(SD, file_name, &SerialBT);        
