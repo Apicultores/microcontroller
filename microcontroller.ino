@@ -11,6 +11,7 @@
 #error Bluetooth não está habilitado!
 #endif
 
+/* Define macros */
 #define SOUNDPIN 34
 #define DHTPIN 33
 #define DHT2PIN 27
@@ -31,6 +32,7 @@ const int SERIAL_DATA_FLOW = 115200;
 const String BLUETOOTH_NAME = "colmeia_01";
 const uint8_t SD_CARD_PIN = 5;
 
+/* Classe responsável por tratar as informações de som */
 class SoundCatch {
   public:
 
@@ -72,6 +74,7 @@ class SoundCatch {
   }
 };
 
+/* Classe responsável por tratar as informações de timestamp */
 class TimeKeeper {
   public:
 
@@ -159,6 +162,7 @@ void loop() {
     date = now_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE);
     timestamp = now_time.timestamp();
     
+    /* Afere dados dos modulos */
     sprintf(file_name, "/%s.json", date.c_str());
     float external_humidity = giveDefaultValueWhenNaN(dht.readHumidity());
     float external_temperature = giveDefaultValueWhenNaN(dht.readTemperature());
@@ -171,6 +175,7 @@ void loop() {
     sprintf(timestamp_str, "%s", timestamp.c_str());
     timestamp_str[10] = ' ';
 
+    /* Escreve os dados coletados em formato JSON */
     char to_write[100];
     sprintf(to_write,"{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":\"%s\"}",
         internal_temperature, external_temperature, internal_humidity, external_humidity, sound, timestamp_str);
@@ -183,6 +188,7 @@ void loop() {
     }
   }
 
+  /*Envia dados via Bluetooth */
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
 
@@ -223,7 +229,9 @@ void loop() {
         readFileBT(SD, file_name, &SerialBT);        
         has_written = true;
       }
+
       SerialBT.print("\n]}\n");
+      // Envia o caractere que indica o final de um arquivo de dados
       SerialBT.print("@\n");
     }
   }
