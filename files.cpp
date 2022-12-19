@@ -73,6 +73,17 @@ void removeDir(fs::FS &fs, const char *path) {
   }
 }
 
+void fileToFile(fs::FS &fs, const char *source, const char* dest) {
+  File sourceFile = fs.open(source);
+  File destFile = fs.open(dest, FILE_APPEND);
+  while(sourceFile.available()) {
+    char readChar = sourceFile.read();
+    destFile.write(readChar);
+  }
+  sourceFile.close();
+  destFile.close();
+}
+
 void readFile(fs::FS &fs, const char *path) {
   Serial.printf("Lendo arquivo: %s\n", path);
 
@@ -99,8 +110,21 @@ void readFileBT(fs::FS &fs, const char *path, BleSerial* SerialBT) {
   }
 
   Serial.print("Enviando conteúdo do arquivo via Bluetooth");
+  char buffer[101];
+  int counter = 0;
   while (file.available()) {
-    SerialBT->write(file.read());
+    char readChar = file.read();
+    buffer[counter] = readChar;
+    counter++;
+    if (readChar == '\n' || counter >= 100) {
+      buffer[counter] = '\0';
+      SerialBT->print(buffer);
+      counter = 0;
+    }
+  }
+  if (counter > 0) {
+    buffer[counter] = '\0';
+    SerialBT->print(buffer);
   }
   file.close();
 }
@@ -141,15 +165,14 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
   file.close();
 }
 
-// TODO implementar caso precisemos utilizar
-// void renameFile(fs::FS &fs, const char *path1, const char *path2) {
-//   Serial.printf("Renomeando aqruivo  file %s to %s\n", path1, path2);
-//   if (fs.rename(path1, path2)) {
-//     Serial.println("File renamed");
-//   } else {
-//     Serial.println("Rename failed");
-//   }
-// }
+void renameFile(fs::FS &fs, const char *path1, const char *path2) {
+  Serial.printf("Renomeando aqruivo  file %s to %s\n", path1, path2);
+  if (fs.rename(path1, path2)) {
+    Serial.println("Arquivo renomeado!");
+  } else {
+    Serial.println("Falha ao renomear arquivo!");
+  }
+}
 
 void deleteFile(fs::FS &fs, const char *path) {
   Serial.printf("Deletando arquivo: %s\n", path);
