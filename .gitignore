@@ -34,5 +34,6 @@
 # Arduino IDE
 *.theia
 
-#VS Code Files
+#VS Code Files and Dirs
 *.vscode
+.vscode/
