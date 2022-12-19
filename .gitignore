@@ -35,5 +35,8 @@
 *.theia
 
 #VS Code Files and Dirs
-*.vscode
 .vscode/
+.vscode/*
+.vscode/**/*
+
+
