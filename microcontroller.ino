@@ -118,7 +118,7 @@ void setup() {
     Serial.println("Relógio (RTC) não conctado");
   } else if (rtc.lostPower()) {
     Serial.println("Ajustando relógio com horário do PC...");
-    rtc.adjust(DateTime(__DATE__, __TIME__));
+    // rtc.adjust(DateTime(__DATE__, __TIME__));
     Serial.printf("Data ajustada para: %s\n", now().timestamp());
   } else {
     Serial.printf("Data atual: %s\n", now().timestamp());
@@ -217,7 +217,7 @@ void loop() {
     if (input == 'g') {
       DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
-      SerialBT.print("{\"data\": [");
+      SerialBT.print("{\"data\":[");
       // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
       bool has_written = false;
       for (int i = 0; i < DAYS_RETURNED; i++) {
@@ -225,13 +225,13 @@ void loop() {
         start_time = start_time + TimeSpan(ONE_DAY_IN_SECONDS);
         if (!checkFileExists(SD, file_name)) continue;
         if (has_written) {
-          SerialBT.print(",\n");
+          SerialBT.print(",");
         }
         readFileBT(SD, file_name, &SerialBT);        
         has_written = true;
       }
-      SerialBT.print("\n]}\n");
-      SerialBT.print("@\n");
+      SerialBT.print("]}");
+      SerialBT.print("@");
     }
   }
 }
