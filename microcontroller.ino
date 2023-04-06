@@ -29,8 +29,8 @@ DateTime last_time;
 String timestamp;
 char file_name[100];
 
-const int SERIAL_DATA_FLOW = 115200;
-const String BLUETOOTH_NAME = "finger_teste";
+const int SERIAL_DATA_FLOW = 9600;
+const String BLUETOOTH_NAME = "colmeia_1";
 const uint8_t SD_CARD_PIN = 5;
 
 class SoundCatch {
@@ -174,6 +174,9 @@ void loop() {
     float sound = convertToDB(sound_obj->get_average());
     sound_obj->clear_count();
 
+    Serial.println("--------");
+    Serial.println(external_humidity);
+    Serial.println(external_temperature);
     char timestamp_str[50];
     sprintf(timestamp_str, "%s", timestamp.c_str());
     timestamp_str[10] = ' ';
