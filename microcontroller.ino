@@ -1,8 +1,8 @@
+#include <BleSerial.h>
 #include "DHT.h"
 #include "RTClib.h"
 #include "SD.h"
 #include "SPI.h"
-#include <BleSerial.h>
 #include <HTTPUpdateServer.h>
 #include <Wire.h>
 #include "files.h"
@@ -18,7 +18,7 @@
 #define DHTTYPE DHT11
 #define ONE_DAY_IN_SECONDS 86400
 #define DAYS_RETURNED 7
-#define MEASURE_INTERVAL 5*60000
+#define MEASURE_INTERVAL 300000
 
 /* Instancia modulos */
 DHT dht(DHTPIN, DHTTYPE);
@@ -26,16 +26,18 @@ DHT dht2(DHT2PIN, DHTTYPE);
 RTC_DS3231 rtc;
 BleSerial SerialBT;
 DateTime last_time;
+
 String timestamp;
 char file_name[100];
-const int SERIAL_DATA_FLOW = 115200;
+
+const int SERIAL_DATA_FLOW = 9600;
 const String BLUETOOTH_NAME = "colmeia_01";
 const uint8_t SD_CARD_PIN = 5;
 
 /* Classe responsável por tratar as informações de som */
 class SoundCatch {
   public:
-
+  
   int max;
   int min;
   time_t last_time;
@@ -77,12 +79,10 @@ class SoundCatch {
 /* Classe responsável por tratar as informações de timestamp */
 class TimeKeeper {
   public:
-
   time_t last_time;
   TimeKeeper() {
     last_time = millis();
   }
-
   bool time_passed() {
     time_t current_time = millis();
     if ((time_t)(current_time - last_time) >= MEASURE_INTERVAL) {
@@ -120,7 +120,7 @@ void setup() {
     Serial.println("Relógio (RTC) não conctado");
   } else if (rtc.lostPower()) {
     Serial.println("Ajustando relógio com horário do PC...");
-    rtc.adjust(DateTime(__DATE__, __TIME__));
+    // rtc.adjust(DateTime(__DATE__, __TIME__));
     Serial.printf("Data ajustada para: %s\n", now().timestamp());
   } else {
     Serial.printf("Data atual: %s\n", now().timestamp());
@@ -137,7 +137,9 @@ void setup() {
     return;
   }
 
-  Serial.printf("Capacidade do cartão SD: %lluMB\n", SD.cardSize()/(1024*1024));
+  Serial.printf("Capacidade do cartão SD: %lluMB\n",
+                SD.cardSize() / (1024 * 1024));
+
   writeFile(SD, "/hello_micro.txt", "Hello");
   readFile(SD, "/hello_micro.txt");
 
@@ -175,7 +177,7 @@ void loop() {
     sprintf(timestamp_str, "%s", timestamp.c_str());
     timestamp_str[10] = ' ';
 
-    /* Escreve os dados coletados em formato JSON */
+/* Escreve os dados coletados em formato JSON */
     char to_write[100];
     sprintf(to_write,"{\"ti\":%.1f,\"te\":%.1f,\"ui\":%.1f,\"ue\":%.1f,\"s\":%.1f,\"ts\":\"%s\"}",
         internal_temperature, external_temperature, internal_humidity, external_humidity, sound, timestamp_str);
@@ -187,11 +189,10 @@ void loop() {
       writeFile(SD, file_name, to_write);
     }
   }
-
-  /*Envia dados via Bluetooth */
+  
+/*Envia dados via Bluetooth */
   if (SerialBT.available()) {
     char input = (char)SerialBT.read();
-
     if (input == 'd') {
       DateTime now_time = now();
       String date, timestamp;
@@ -213,26 +214,25 @@ void loop() {
           internal_temperature, external_temperature, internal_humidity, external_humidity, sound, timestamp_str);
 
       Serial.println(to_write);
-    } else if (input == 'g') {
+    }
+    if (input == 'g') {
       DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
-      SerialBT.print("{\"data\": [");
-      // Le os ultimos arquivos, onde cada arquivo contém os dados de um dia
+      SerialBT.print("{\"data\":[");
+      // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
       bool has_written = false;
       for (int i = 0; i < DAYS_RETURNED; i++) {
         sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
         start_time = start_time + TimeSpan(ONE_DAY_IN_SECONDS);
         if (!checkFileExists(SD, file_name)) continue;
         if (has_written) {
-          SerialBT.print(",\n");
+          SerialBT.print(",");
         }
         readFileBT(SD, file_name, &SerialBT);        
         has_written = true;
       }
-
-      SerialBT.print("\n]}\n");
-      // Envia o caractere que indica o final de um arquivo de dados
-      SerialBT.print("@\n");
+      SerialBT.print("]}");
+      SerialBT.print("@");
     }
   }
 }
