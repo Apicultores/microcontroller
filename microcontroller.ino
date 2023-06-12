@@ -144,6 +144,9 @@ void setup() {
   readFile(SD, "/hello_micro.txt");
 
   last_time = now();
+
+  // Lista todos os arquivos do diretório raiz
+  // listFiles("/");
 }
 
 float giveDefaultValueWhenNaN(float val, float default_val = -100) {
@@ -216,6 +219,7 @@ void loop() {
       Serial.println(to_write);
     }
     if (input == 'g') {
+      // listFiles("/");
       DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
       Serial.println("Lendo arquivos...");
       SerialBT.print("{\"data\":[");
@@ -235,4 +239,79 @@ void loop() {
       SerialBT.print("@");
     }
   }
+}
+
+void listFiles(const char* dirName) {
+  File root = SD.open(dirName);
+
+  if (!root) {
+    Serial.println("Erro ao abrir o diretório");
+    return;
+  }
+
+  if (!root.isDirectory()) {
+    Serial.println("Não é um diretório");
+    return;
+  }
+
+  File file = root.openNextFile();
+
+      // // DateTime start_time = now() - TimeSpan((DAYS_RETURNED-1)*ONE_DAY_IN_SECONDS);
+      // // Serial.println("Lendo arquivos...");
+      // SerialBT.print("{\"data\":[");
+      // // Le os ultimos 30 dias, onde cada arquivo contém os dados de um dia
+      // bool has_written = false;
+      // // for (int i = 0; i < DAYS_RETURNED; i++) {
+      //   // sprintf(file_name, "/%s.json", start_time.timestamp(DateTime::timestampOpt::TIMESTAMP_DATE).c_str());
+      //   // start_time = start_time + TimeSpan(ONE_DAY_IN_SECONDS);
+      //   // if (!checkFileExists(SD, file_name)) continue;
+      //   if (has_written) {
+      //     SerialBT.print(",");
+      //   }
+      //   readFileBT(SD, file_name, &SerialBT);        
+      //   has_written = true;
+      // }
+      // SerialBT.print("]}");
+      // SerialBT.print("@");
+
+SerialBT.print("{\"data\":[");
+  bool has_written = false;
+  while (file) {
+    if (file.isDirectory()) {
+      listFiles(file.name());
+    } else {
+      // Verifica se o arquivo é um .json, não começa com "." e não começa com "/.Trashes/"
+      if (endsWith(file.name(), ".json") && file.name()[0] != '.' 
+      && strncmp(file.name(), "/.", 2) != 0
+      && strncmp(file.name(), "/.Trashes/", 10) != 0) {
+        Serial.print("Arquivo .json encontrado: ");
+        Serial.println(file.name());
+
+        if (has_written) {
+          SerialBT.print(",");
+        }
+
+        readFileBT(SD, file_name, &SerialBT);        
+        has_written = true;
+        // Faça o que quiser com o arquivo .json
+        // Por exemplo, você pode ler os dados do arquivo usando file.read() ou file.readString()
+      }
+    }
+
+    file = root.openNextFile();
+  }
+  SerialBT.print("]}");
+  SerialBT.print("@");
+  root.close();
+}
+
+bool endsWith(const char* str, const char* suffix) {
+  size_t strLen = strlen(str);
+  size_t suffixLen = strlen(suffix);
+
+  if (suffixLen > strLen) {
+    return false;
+  }
+
+  return strncmp(str + strLen - suffixLen, suffix, suffixLen) == 0;
 }
